@@ -1,0 +1,27 @@
+/gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
+
+# Mac
+.DS_Store
+**/.DS_Store
+
+
+# Build output
+/build/
+
+# Logs
+*.log
+
+# Gradle
+.gradle/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Environment files
+.env
+
+# OS files
+Thumbs.db

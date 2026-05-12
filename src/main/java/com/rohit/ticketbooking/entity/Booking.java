@@ -32,4 +32,7 @@ public class Booking {
     @Column(nullable = false)
     private LocalDateTime bookedAt;
 
+    @Column(nullable = false, unique = true)
+    private String idempotencyKey;
+
 }

@@ -19,16 +19,16 @@ public class Seat {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "show_id")
+    @JoinColumn(name = "show_id", nullable = false)
     private Show show;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String seatNumber;
 
     @Enumerated(EnumType.STRING)
     private SeatStatus status;
 
-    private LocalDateTime pendingExpiresAt;
+    private LocalDateTime lockExpiresAt;
 
     @Version
     private Long version;

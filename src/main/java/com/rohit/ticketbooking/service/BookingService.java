@@ -4,6 +4,7 @@ import com.rohit.ticketbooking.entity.*;
 import com.rohit.ticketbooking.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,23 +23,29 @@ public class BookingService {
         // 1. idempotency check in db
         return bookingRepository.findByIdempotencyKey(idempotencyKey)
                 .orElseGet(() -> {
+                    try {
+                        // 2. validate user
+                        User user = userRepository.findById(userId)
+                                .orElseThrow(() -> new RuntimeException("User not found"));
 
-                    // 2. validate user
-                    User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new RuntimeException("User not found"));
+                        // 3. delegate locking to SeatService
+                        Seat lockedSeat = seatService.lockSeat(seatId);
 
-                    // 3. delegate locking to SeatService
-                    Seat lockedSeat = seatService.lockSeat(seatId);
+                        // 4. create booking record
+                        Booking booking = new Booking();
+                        booking.setUser(user);
+                        booking.setSeat(lockedSeat);
+                        booking.setStatus(BookingStatus.PENDING);
+                        booking.setBookedAt(LocalDateTime.now());
+                        booking.setIdempotencyKey(idempotencyKey);
 
-                    // 4. create booking record
-                    Booking booking = new Booking();
-                    booking.setUser(user);
-                    booking.setSeat(lockedSeat);
-                    booking.setStatus(BookingStatus.PENDING);
-                    booking.setBookedAt(LocalDateTime.now());
-                    booking.setIdempotencyKey(idempotencyKey);
+                        // save And Flush forces the DB to check constraints immediately inside the try block
+                        return bookingRepository.saveAndFlush(booking);
 
-                    return bookingRepository.save(booking);
+                    } catch (DataIntegrityViolationException e) {
+                        return bookingRepository.findByIdempotencyKey(idempotencyKey)
+                                .orElseThrow(() -> new RuntimeException("Concurrency error: Booking lost in race condition", e));
+                    }
                 });
     }
 
@@ -57,14 +64,14 @@ public class BookingService {
 
     @Transactional
     public void cancelBooking(Long bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        // 1. fetch and validate booking is in PENDING state
+        Booking booking = getAndValidateBooking(bookingId, BookingStatus.PENDING, "Only PENDING bookings can be cancelled");
 
-        // 3. update booking status to CANCELLED
+        // 2. update booking status to CANCELLED
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
 
-        // release seat back to AVAILABLE
+        // 3. release seat back to AVAILABLE
         seatService.releaseSeat(booking.getSeat().getId());
     }
 

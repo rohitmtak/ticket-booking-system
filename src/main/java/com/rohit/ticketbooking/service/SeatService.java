@@ -24,16 +24,25 @@ public class SeatService {
             throw new RuntimeException("Seat already sold");
         }
 
-        // 2. check if it's currently locked
+        // 2. if it is PENDING but the expiry time has passed, explicitly reset it to AVAILABLE!
         if (seat.getStatus() == SeatStatus.PENDING &&
                 seat.getLockExpiresAt() != null &&
-                seat.getLockExpiresAt().isAfter(now)) {
+                seat.getLockExpiresAt().isBefore(now)) {
+
+                seat.setStatus(SeatStatus.AVAILABLE);
+                seat.setLockExpiresAt(null);
+        }
+
+        // 3. check if it's currently locked (Active lock window)
+        if (seat.getStatus() == SeatStatus.PENDING) {
             throw new RuntimeException("Seat is currently held by another user");
         }
 
+        // 4. Proceed with locking the AVAILABLE seat
         seat.setStatus(SeatStatus.PENDING);
         seat.setLockExpiresAt(now.plusMinutes(10));
 
+        // This save triggers the @Version check!
         return seatRepository.save(seat);
     }
 

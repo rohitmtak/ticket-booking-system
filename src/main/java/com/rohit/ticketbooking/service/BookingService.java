@@ -1,6 +1,10 @@
 package com.rohit.ticketbooking.service;
 
 import com.rohit.ticketbooking.entity.*;
+import com.rohit.ticketbooking.exception.BookingConcurrencyException;
+import com.rohit.ticketbooking.exception.BookingNotFoundException;
+import com.rohit.ticketbooking.exception.InvalidBookingStateException;
+import com.rohit.ticketbooking.exception.UserNotFoundException;
 import com.rohit.ticketbooking.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +30,7 @@ public class BookingService {
                     try {
                         // 2. validate user
                         User user = userRepository.findById(userId)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                                .orElseThrow(() -> new UserNotFoundException(userId));
 
                         // 3. delegate locking to SeatService
                         Seat lockedSeat = seatService.lockSeat(seatId);
@@ -44,7 +48,8 @@ public class BookingService {
 
                     } catch (DataIntegrityViolationException e) {
                         return bookingRepository.findByIdempotencyKey(idempotencyKey)
-                                .orElseThrow(() -> new RuntimeException("Concurrency error: Booking lost in race condition", e));
+                                .orElseThrow(() -> new BookingConcurrencyException(
+                                        "Concurrency error: Booking lost in race condition", e));
                     }
                 });
     }
@@ -90,10 +95,10 @@ public class BookingService {
 
     private Booking getAndValidateBooking(Long bookingId, BookingStatus expectedStatus, String errorMessage) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new BookingNotFoundException(bookingId));
 
         if (booking.getStatus() != expectedStatus) {
-            throw new RuntimeException(errorMessage);
+            throw new InvalidBookingStateException(errorMessage);
         }
 
         return booking;

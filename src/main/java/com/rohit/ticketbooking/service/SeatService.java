@@ -1,6 +1,9 @@
 package com.rohit.ticketbooking.service;
 
 import com.rohit.ticketbooking.entity.*;
+import com.rohit.ticketbooking.exception.SeatAlreadyBookedException;
+import com.rohit.ticketbooking.exception.SeatLockedException;
+import com.rohit.ticketbooking.exception.SeatNotFoundException;
 import com.rohit.ticketbooking.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,13 +18,13 @@ public class SeatService {
 
     public Seat lockSeat(Long seatId) {
         Seat seat = seatRepository.findById(seatId)
-                .orElseThrow(() -> new RuntimeException("Seat not found"));
+                .orElseThrow(() -> new SeatNotFoundException(seatId));
 
         LocalDateTime now = LocalDateTime.now();
 
         // 1. check if it's permanently gone
         if (seat.getStatus() == SeatStatus.BOOKED) {
-            throw new RuntimeException("Seat already sold");
+            throw new SeatAlreadyBookedException(seatId);
         }
 
         // 2. if it is PENDING but the expiry time has passed, explicitly reset it to AVAILABLE!
@@ -35,7 +38,7 @@ public class SeatService {
 
         // 3. check if it's currently locked (Active lock window)
         if (seat.getStatus() == SeatStatus.PENDING) {
-            throw new RuntimeException("Seat is currently held by another user");
+            throw new SeatLockedException(seatId);
         }
 
         // 4. Proceed with locking the AVAILABLE seat
@@ -48,7 +51,7 @@ public class SeatService {
 
     public void confirmSeat(Long seatId) {
         Seat seat = seatRepository.findById(seatId)
-                .orElseThrow(() -> new RuntimeException("Seat not found"));
+                .orElseThrow(() -> new SeatNotFoundException(seatId));
         seat.setStatus(SeatStatus.BOOKED);
         seat.setLockExpiresAt(null);
         seatRepository.save(seat);
@@ -56,7 +59,7 @@ public class SeatService {
 
     public void releaseSeat(Long seatId) {
         Seat seat = seatRepository.findById(seatId)
-                .orElseThrow(() -> new RuntimeException("Seat not found"));
+                .orElseThrow(() -> new SeatNotFoundException(seatId));
         seat.setStatus(SeatStatus.AVAILABLE);
         seat.setLockExpiresAt(null);
         seatRepository.save(seat);

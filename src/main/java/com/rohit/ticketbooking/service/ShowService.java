@@ -2,6 +2,8 @@ package com.rohit.ticketbooking.service;
 
 import com.rohit.ticketbooking.dto.ShowRequest;
 import com.rohit.ticketbooking.entity.*;
+import com.rohit.ticketbooking.exception.InvalidShowRequestException;
+import com.rohit.ticketbooking.exception.ShowNotFoundException;
 import com.rohit.ticketbooking.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -21,13 +23,13 @@ public class ShowService {
     public Show createShow(ShowRequest request) {
         // 1. validate request
         if (request.getMovieName() == null || request.getMovieName().isBlank()) {
-            throw new RuntimeException("Movie name is required");
+            throw new InvalidShowRequestException("Movie name is required");
         }
         if (request.getTotalSeats() == null || request.getTotalSeats() <= 0) {
-            throw new RuntimeException("Total seats must be greater than 0");
+            throw new InvalidShowRequestException("Total seats must be greater than 0");
         }
         if (request.getShowTime() == null) {
-            throw new RuntimeException("Show time is required");
+            throw new InvalidShowRequestException("Show time is required");
         }
 
         // 2. persist the show
@@ -58,13 +60,13 @@ public class ShowService {
 
     public Show getShow(Long showId) {
         return showRepository.findById(showId)
-                .orElseThrow(() -> new RuntimeException("Show not found"));
+                .orElseThrow(() -> new ShowNotFoundException(showId));
     }
 
     public List<Seat> listSeatsForShow(Long showId) {
         // ensure the show exists so we return a clear 404-style error rather than an empty list
         showRepository.findById(showId)
-                .orElseThrow(() -> new RuntimeException("Show not found"));
+                .orElseThrow(() -> new ShowNotFoundException(showId));
         return seatRepository.findByShowId(showId);
     }
 }

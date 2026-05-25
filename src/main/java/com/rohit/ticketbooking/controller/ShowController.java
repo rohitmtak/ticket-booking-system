@@ -19,18 +19,12 @@ public class ShowController {
 
     private final ShowService showService;
 
-    // POST
     @PostMapping
-    public ResponseEntity<?> createShow(@RequestBody ShowRequest request) {
-        try {
-            Show show = showService.createShow(request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(ShowResponse.from(show));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
+    public ResponseEntity<ShowResponse> createShow(@RequestBody ShowRequest request) {
+        Show show = showService.createShow(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ShowResponse.from(show));
     }
 
-    // GET all
     @GetMapping
     public ResponseEntity<List<ShowResponse>> listShows() {
         List<ShowResponse> shows = showService.listShows().stream()
@@ -39,27 +33,17 @@ public class ShowController {
         return ResponseEntity.ok(shows);
     }
 
-    // GET one
     @GetMapping("/{id}")
-    public ResponseEntity<?> getShow(@PathVariable("id") Long showId) {
-        try {
-            Show show = showService.getShow(showId);
-            return ResponseEntity.ok(ShowResponse.from(show));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+    public ResponseEntity<ShowResponse> getShow(@PathVariable("id") Long showId) {
+        Show show = showService.getShow(showId);
+        return ResponseEntity.ok(ShowResponse.from(show));
     }
 
-    // GET seats for a show
     @GetMapping("/{id}/seats")
-    public ResponseEntity<?> listSeats(@PathVariable("id") Long showId) {
-        try {
-            List<SeatResponse> seats = showService.listSeatsForShow(showId).stream()
-                    .map(SeatResponse::from)
-                    .toList();
-            return ResponseEntity.ok(seats);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        }
+    public ResponseEntity<List<SeatResponse>> listSeats(@PathVariable("id") Long showId) {
+        List<SeatResponse> seats = showService.listSeatsForShow(showId).stream()
+                .map(SeatResponse::from)
+                .toList();
+        return ResponseEntity.ok(seats);
     }
 }

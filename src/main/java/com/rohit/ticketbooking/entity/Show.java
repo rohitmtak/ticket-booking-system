@@ -11,7 +11,12 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "shows")
+@Table(name = "shows", uniqueConstraints = {
+        @UniqueConstraint(
+                name = "uk_shows_movie_time_venue",
+                columnNames = {"movie_name", "show_time", "venue"}
+        )
+})
 public class Show {
 
     @Id
@@ -21,6 +26,7 @@ public class Show {
     @Column(nullable = false)
     private String movieName;
 
+    @Column(nullable = false)
     private String venue;
 
     @Column(nullable = false)

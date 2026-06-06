@@ -25,6 +25,7 @@ public class ShowController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ShowResponse.from(show));
     }
 
+    // list shows
     @GetMapping
     public ResponseEntity<List<ShowResponse>> listShows() {
         List<ShowResponse> shows = showService.listShows().stream()
@@ -33,12 +34,14 @@ public class ShowController {
         return ResponseEntity.ok(shows);
     }
 
+    // get show details
     @GetMapping("/{id}")
     public ResponseEntity<ShowResponse> getShow(@PathVariable("id") Long showId) {
         Show show = showService.getShow(showId);
         return ResponseEntity.ok(ShowResponse.from(show));
     }
 
+    // list seats for a show
     @GetMapping("/{id}/seats")
     public ResponseEntity<List<SeatResponse>> listSeats(@PathVariable("id") Long showId) {
         List<SeatResponse> seats = showService.listSeatsForShow(showId).stream()

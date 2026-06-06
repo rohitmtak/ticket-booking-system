@@ -3,7 +3,9 @@ package com.rohit.ticketbooking.service;
 import com.rohit.ticketbooking.dto.ShowRequest;
 import com.rohit.ticketbooking.entity.*;
 import com.rohit.ticketbooking.exception.InvalidShowRequestException;
+import org.springframework.dao.DataIntegrityViolationException;
 import com.rohit.ticketbooking.exception.ShowNotFoundException;
+import com.rohit.ticketbooking.exception.DuplicateShowException;
 import com.rohit.ticketbooking.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,9 @@ public class ShowService {
         if (request.getMovieName() == null || request.getMovieName().isBlank()) {
             throw new InvalidShowRequestException("Movie name is required");
         }
+        if (request.getVenue() == null || request.getVenue().isBlank()) {
+            throw new InvalidShowRequestException("Venue is required");
+        }
         if (request.getTotalSeats() == null || request.getTotalSeats() <= 0) {
             throw new InvalidShowRequestException("Total seats must be greater than 0");
         }
@@ -32,15 +37,27 @@ public class ShowService {
             throw new InvalidShowRequestException("Show time is required");
         }
 
-        // 2. persist the show
+        // 2. reject duplicate show
+        if (showRepository.existsByMovieNameAndShowTimeAndVenue(
+            request.getMovieName(), request.getShowTime(), request.getVenue())) {
+                throw new DuplicateShowException(request.getMovieName(), request.getShowTime(), request.getVenue());
+            }
+
+        // 3. persist the show
         Show show = new Show();
         show.setMovieName(request.getMovieName());
         show.setVenue(request.getVenue());
         show.setTotalSeats(request.getTotalSeats());
         show.setShowTime(request.getShowTime());
-        Show savedShow = showRepository.save(show);
 
-        // 3. auto-provision seats for the show (S1..Sn, all AVAILABLE)
+        Show savedShow;
+        try {
+            savedShow = showRepository.saveAndFlush(show);
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateShowException(request.getMovieName(), request.getShowTime(), request.getVenue());
+        }
+
+        // 4. auto-provision seats for the show (S1..Sn, all AVAILABLE)
         List<Seat> seats = new ArrayList<>(request.getTotalSeats());
         for (int i = 1; i <= request.getTotalSeats(); i++) {
             Seat seat = new Seat();
